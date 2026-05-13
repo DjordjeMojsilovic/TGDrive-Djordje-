@@ -51,6 +51,10 @@ function openMoreButton(div) {
             moreDiv.querySelector(`#folder-share-${id}`).addEventListener('click', shareFolder)
         }
         catch { }
+        try {
+            moreDiv.querySelector(`#move-${id}`).addEventListener('click', moveSingleItem)
+        }
+        catch { }
     }
     else {
         moreDiv.querySelector(`#restore-${id}`).addEventListener('click', restoreFileFolder)
@@ -212,3 +216,47 @@ async function shareFolder() {
 }
 
 // File More Button Handler  End
+
+
+// ── Move via 3-dots menu (single item) ──
+
+function moveSingleItem() {
+    // `this` is the <div id="move-<id>"> inside `.more-options`.
+    const id = this.getAttribute('id').split('-')[1];
+    const moreOpt = document.getElementById(`more-option-${id}`);
+    if (!moreOpt) return;
+    const basePath = moreOpt.getAttribute('data-path') || '/';
+    const sourcePath = (basePath.endsWith('/') ? basePath : basePath + '/') + id;
+    const normalisedSource = ('/' + sourcePath).replace(/\/+/g, '/');
+
+    if (typeof openMovePicker !== 'function') {
+        alert('Move picker not available.');
+        return;
+    }
+
+    openMovePicker([normalisedSource], async (destinationPath) => {
+        if (typeof _doMove === 'function') {
+            await _doMove(normalisedSource, destinationPath);
+        } else {
+            // Fallback — call /api/move directly via postJson so unlocks are auto-attached.
+            const json = await postJson('/api/move', {
+                source_path: normalisedSource,
+                destination_path: destinationPath
+            });
+            if (json.status === 'ok') {
+                window.location.reload();
+            } else if (json.status === 'locked' && typeof withFolderUnlock === 'function') {
+                withFolderUnlock(json.folder_id, '/' + json.folder_id, async () => {
+                    const retry = await postJson('/api/move', {
+                        source_path: normalisedSource,
+                        destination_path: destinationPath
+                    });
+                    if (retry.status === 'ok') window.location.reload();
+                    else alert('Fehler beim Verschieben: ' + retry.status);
+                });
+            } else {
+                alert('Fehler beim Verschieben: ' + json.status);
+            }
+        }
+    });
+}

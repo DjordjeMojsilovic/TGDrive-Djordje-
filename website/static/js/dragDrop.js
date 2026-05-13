@@ -130,14 +130,22 @@ function _setupRootDropZone() {
 
 async function _doMove(sourcePath, destPath) {
     try {
+        const unlocks = (typeof getUnlocksMap === 'function') ? getUnlocksMap() : {};
         const res = await fetch('/api/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: getPassword(), source_path: sourcePath, destination_path: destPath })
+            body: JSON.stringify({
+                password: getPassword(),
+                source_path: sourcePath,
+                destination_path: destPath,
+                unlocks: unlocks,
+            })
         });
         const json = await res.json();
         if (json.status === 'ok') {
             window.location.reload();
+        } else if (json.status === 'locked' && typeof withFolderUnlock === 'function') {
+            withFolderUnlock(json.folder_id, '/' + json.folder_id, () => _doMove(sourcePath, destPath));
         } else {
             alert('Fehler beim Verschieben: ' + json.status);
         }

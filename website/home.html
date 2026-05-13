@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Djordje Drive</title>
-    <link rel="stylesheet" href="static/home.css?v=5" />
+    <link rel="stylesheet" href="static/home.css?v=6" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 </head>
@@ -184,6 +184,39 @@
         </div>
         <!-- File Uploader End -->
 
+        <!-- Move Picker Modal Start -->
+        <div id="move-picker-modal" class="create-new-folder">
+            <span>Verschieben nach...</span>
+            <p class="ytdlp-hint">Zielordner auswählen</p>
+            <div id="move-picker-list" class="move-picker-list"></div>
+            <div>
+                <button id="move-picker-cancel">Abbrechen</button>
+                <button id="move-picker-confirm">Verschieben</button>
+            </div>
+        </div>
+        <!-- Move Picker Modal End -->
+
+        <!-- Pack Into New Folder Name Modal Start -->
+        <div id="pack-folder-modal" class="create-new-folder">
+            <span>In neuen Ordner packen</span>
+            <input type="text" id="pack-folder-name" placeholder="Name des neuen Ordners" autocomplete="off" />
+            <div>
+                <button id="pack-folder-cancel">Abbrechen</button>
+                <button id="pack-folder-confirm">Erstellen</button>
+            </div>
+        </div>
+        <!-- Pack Into New Folder Name Modal End -->
+
+        <!-- Management Mode Action Bar Start -->
+        <div id="mgmt-bar">
+            <button id="mgmt-move-btn"><span class="material-icons">drive_file_move</span> Verschieben</button>
+            <button id="mgmt-delete-btn"><span class="material-icons">delete</span> Löschen</button>
+            <button id="mgmt-pack-btn"><span class="material-icons">create_new_folder</span> In neuen Ordner packen</button>
+            <button id="mgmt-cancel-btn"><span class="material-icons">close</span> Abbrechen</button>
+            <span id="mgmt-count">0</span>
+        </div>
+        <!-- Management Mode Action Bar End -->
+
         <!-- Main Content Start -->
         <div class="main-content">
             <div id="breadcrumb" class="breadcrumb"></div>
@@ -212,6 +245,10 @@
     <script src="static/js/dragDrop.js"></script>
     <script src="static/js/lockedFolders.js"></script>
     <script src="static/js/breadcrumb.js"></script>
+    <script src="static/js/navbar.js"></script>
+    <script src="static/js/managementMode.js"></script>
+    <script src="static/js/folderPicker.js"></script>
+    <script src="static/js/gridView.js"></script>
 </body>
 
 </html>

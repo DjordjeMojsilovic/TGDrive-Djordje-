@@ -22,7 +22,7 @@ function showDirectory(data) {
                 html += `<div data-path="${item.path}" id="more-option-${item.id}" data-name="${item.name}" class="more-options"><input class="more-options-focus" readonly="readonly" style="height:0;width:0;border:none;position:absolute"><div id="restore-${item.id}" data-path="${item.path}"><span class="material-icons">restore</span> Restore</div><hr><div id="delete-${item.id}" data-path="${item.path}"><span class="material-icons">delete</span> Delete</div></div>`
             }
             else {
-                html += `<div data-path="${item.path}" id="more-option-${item.id}" data-name="${item.name}" class="more-options"><input class="more-options-focus" readonly="readonly" style="height:0;width:0;border:none;position:absolute"><div id="rename-${item.id}"><span class="material-icons">edit</span> Rename</div><hr><div id="trash-${item.id}"><span class="material-icons">delete</span> Trash</div><hr><div id="folder-share-${item.id}"><span class="material-icons">share</span> Share</div></div>`
+                html += `<div data-path="${item.path}" id="more-option-${item.id}" data-name="${item.name}" class="more-options"><input class="more-options-focus" readonly="readonly" style="height:0;width:0;border:none;position:absolute"><div id="rename-${item.id}"><span class="material-icons">edit</span> Rename</div><hr><div id="trash-${item.id}"><span class="material-icons">delete</span> Trash</div><hr><div id="folder-share-${item.id}"><span class="material-icons">share</span> Share</div><hr><div id="move-${item.id}"><span class="material-icons">drive_file_move</span> Move</div></div>`
             }
         }
     }
@@ -36,7 +36,7 @@ function showDirectory(data) {
                 html += `<div data-path="${item.path}" id="more-option-${item.id}" data-name="${item.name}" class="more-options"><input class="more-options-focus" readonly="readonly" style="height:0;width:0;border:none;position:absolute"><div id="restore-${item.id}" data-path="${item.path}"><span class="material-icons">restore</span> Restore</div><hr><div id="delete-${item.id}" data-path="${item.path}"><span class="material-icons">delete</span> Delete</div></div>`
             }
             else {
-                html += `<div data-path="${item.path}" id="more-option-${item.id}" data-name="${item.name}" class="more-options"><input class="more-options-focus" readonly="readonly" style="height:0;width:0;border:none;position:absolute"><div id="rename-${item.id}"><span class="material-icons">edit</span> Rename</div><hr><div id="trash-${item.id}"><span class="material-icons">delete</span> Trash</div><hr><div id="share-${item.id}"><span class="material-icons">share</span> Share</div></div>`
+                html += `<div data-path="${item.path}" id="more-option-${item.id}" data-name="${item.name}" class="more-options"><input class="more-options-focus" readonly="readonly" style="height:0;width:0;border:none;position:absolute"><div id="rename-${item.id}"><span class="material-icons">edit</span> Rename</div><hr><div id="trash-${item.id}"><span class="material-icons">delete</span> Trash</div><hr><div id="share-${item.id}"><span class="material-icons">share</span> Share</div><hr><div id="move-${item.id}"><span class="material-icons">drive_file_move</span> Move</div></div>`
             }
         }
     }
@@ -71,6 +71,17 @@ function showDirectory(data) {
     });
 
     initDragDrop();
+
+    // Apply current view mode (list/grid) — paints thumbnails in grid mode.
+    if (typeof applyViewMode === 'function') {
+        try { applyViewMode(); } catch (e) { console.error(e); }
+    }
+
+    // If management mode is active, re-paint checkboxes (rows were just re-rendered).
+    if (document.body.classList.contains('management-mode')
+        && typeof decorateRowsWithCheckboxes === 'function') {
+        try { decorateRowsWithCheckboxes(); } catch (e) { console.error(e); }
+    }
 }
 
 document.getElementById('search-form').addEventListener('submit', async (event) => {

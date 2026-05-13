@@ -1,6 +1,11 @@
 // Api Fuctions
 async function postJson(url, data) {
     data['password'] = getPassword()
+    // Auto-attach unlocks map (sessionStorage pwhash_*) so backend can gate
+    // operations against password-protected folders.
+    if (data['unlocks'] === undefined) {
+        data['unlocks'] = (typeof getUnlocksMap === 'function') ? getUnlocksMap() : {}
+    }
     const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -8,7 +13,9 @@ async function postJson(url, data) {
         },
         body: JSON.stringify(data)
     })
-    return await response.json()
+    const json = await response.json()
+    // Caller decides how to react to "locked" — see withFolderUnlock helper.
+    return json
 }
 
 document.getElementById('pass-login').addEventListener('click', async () => {
@@ -38,6 +45,15 @@ async function getCurrentDirectory() {
         const data = { 'path': path, 'auth': auth }
         const json = await postJson('/api/getDirectory', data)
 
+        if (json.status === 'locked') {
+            // The current path passes through a locked folder. Prompt for password.
+            if (typeof withFolderUnlock === 'function') {
+                withFolderUnlock(json.folder_id, '/' + json.folder_id, () => getCurrentDirectory());
+            } else {
+                alert('Folder is locked.');
+            }
+            return;
+        }
         if (json.status === 'ok') {
             if (getCurrentPath().startsWith('/share')) {
                 const sections = document.querySelector('.sidebar-menu').getElementsByTagName('a')
@@ -142,6 +158,11 @@ fileInput.addEventListener('change', async (e) => {
     const id = getRandomId();
     formData.append('id', id);
     formData.append('total_size', file.size);
+    try {
+        formData.append('unlocks', JSON.stringify(
+            (typeof getUnlocksMap === 'function') ? getUnlocksMap() : {}
+        ));
+    } catch (e) { formData.append('unlocks', '{}'); }
 
     uploadStep = 1;
     uploadRequest = new XMLHttpRequest();

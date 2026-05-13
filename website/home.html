@@ -47,6 +47,11 @@
                     <img src="static/assets/link-icon.svg" />
                     URL Upload
                 </div>
+                <hr />
+                <div id="ytdlp-url-import-btn">
+                    <img src="static/assets/link-icon.svg" />
+                    Von URL importieren
+                </div>
             </div>
 
             <div class="sidebar-menu">
@@ -95,6 +100,28 @@
             </div>
         </div>
         <!-- Remote Upload End -->
+
+        <!-- YT-DLP URL Import Modal Start -->
+        <div id="ytdlp-import-modal" class="create-new-folder">
+            <span>Von URL importieren</span>
+            <input type="text" id="ytdlp-url-input" placeholder="YouTube, TikTok, Instagram URL..." autocomplete="off" />
+            <p class="ytdlp-hint">Unterstützt 1000+ Seiten (YouTube, TikTok, Instagram, u.v.m.)</p>
+            <div class="ytdlp-progress-area" id="ytdlp-progress-area">
+                <div class="ytdlp-progress-row">
+                    <div class="ytdlp-spinner"></div>
+                    <span id="ytdlp-status-text">Wird heruntergeladen...</span>
+                </div>
+                <div class="ytdlp-bar-track">
+                    <div class="ytdlp-bar-fill" id="ytdlp-progress-bar"></div>
+                </div>
+            </div>
+            <p class="ytdlp-error-text" id="ytdlp-error-text"></p>
+            <div>
+                <button id="ytdlp-cancel-btn">Abbrechen</button>
+                <button id="ytdlp-import-btn">Importieren</button>
+            </div>
+        </div>
+        <!-- YT-DLP URL Import Modal End -->
 
         <!-- Get Password Start -->
         <div id="get-password" class="create-new-folder">
@@ -153,6 +180,7 @@
     <script src="static/js/sidebar.js"></script>
     <script src="static/js/fileClickHandler.js"></script>
     <script src="static/js/main.js"></script>
+    <script src="static/js/ytdlpImport.js"></script>
 </body>
 
 </html>

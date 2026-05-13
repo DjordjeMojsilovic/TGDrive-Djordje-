@@ -1,216 +1,197 @@
-// Drag & Drop feature for Djordje Drive
+// Drag & Drop — event-delegation approach to avoid dragleave flickering
+
+let _draggedEl = null;
+let _draggedPath = null;
+let _currentDragTarget = null; // the folder-tr currently highlighted
 
 function initDragDrop() {
     const path = getCurrentPath();
-    // Disable drag-drop in special views
     if (path.startsWith('/trash') || path.startsWith('/search') || path.startsWith('/share')) {
         return;
     }
 
-    const rows = document.querySelectorAll('tr.body-tr');
-    rows.forEach(row => {
+    // Make every row draggable
+    document.querySelectorAll('tr.body-tr').forEach(row => {
         row.setAttribute('draggable', 'true');
-        row.addEventListener('dragstart', onDragStart);
-        row.addEventListener('dragend', onDragEnd);
+        row.addEventListener('dragstart', _onDragStart);
+        row.addEventListener('dragend', _onDragEnd);
     });
 
-    const folderRows = document.querySelectorAll('tr.folder-tr');
-    folderRows.forEach(row => {
-        row.addEventListener('dragover', onDragOver);
-        row.addEventListener('dragleave', onDragLeave);
-        row.addEventListener('drop', onDropOnFolder);
-    });
-
-    // Table body drop (dropping to current directory — no-op unless cross-folder)
-    const tbody = document.getElementById('directory-data');
-    if (tbody) {
-        tbody.addEventListener('dragover', e => e.preventDefault());
-        tbody.addEventListener('drop', onDropOnTable);
+    // Use event delegation on the TABLE (not individual rows) for over/leave/drop.
+    // This avoids dragleave flickering when the mouse crosses child elements.
+    const table = document.querySelector('.directory table');
+    if (table) {
+        table.addEventListener('dragover', _onTableDragOver);
+        table.addEventListener('dragleave', _onTableDragLeave);
+        table.addEventListener('drop', _onTableDrop);
     }
 
-    // Root drop zone
-    setupRootDropZone();
+    // Root drop zone (shown only when not at root)
+    _setupRootDropZone();
 
-    // Touch events for mobile
-    initTouchDragDrop();
+    // Touch drag for mobile
+    _initTouchDrag();
 }
 
-let draggedEl = null;
-let draggedPath = null;
+// ── Mouse drag ──
 
-function onDragStart(e) {
-    draggedEl = this;
-    draggedPath = (this.getAttribute('data-path') + '/' + this.getAttribute('data-id')).replaceAll('//', '/');
-    this.style.opacity = '0.5';
+function _onDragStart(e) {
+    _draggedEl = this;
+    _draggedPath = (this.getAttribute('data-path') + '/' + this.getAttribute('data-id')).replaceAll('//', '/');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', draggedPath);
+    e.dataTransfer.setData('text/plain', _draggedPath);
+    // Defer opacity so the drag image captures the normal appearance
+    setTimeout(() => { if (_draggedEl) _draggedEl.style.opacity = '0.4'; }, 0);
 }
 
-function onDragEnd(e) {
-    if (draggedEl) {
-        draggedEl.style.opacity = '';
-    }
-    draggedEl = null;
-    draggedPath = null;
-    // Remove all drag-over highlights
-    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+function _onDragEnd() {
+    if (_draggedEl) _draggedEl.style.opacity = '';
+    _draggedEl = null;
+    _draggedPath = null;
+    _clearDragTarget();
 }
 
-function onDragOver(e) {
-    e.preventDefault();
-    e.stopPropagation();
+function _onTableDragOver(e) {
+    e.preventDefault(); // required for drop to fire
     e.dataTransfer.dropEffect = 'move';
-    if (draggedEl !== this) {
-        this.classList.add('drag-over');
+
+    // Find the nearest folder-tr ancestor of the hovered element
+    const row = e.target.closest('tr.folder-tr');
+    if (row && row !== _draggedEl) {
+        if (_currentDragTarget !== row) {
+            _clearDragTarget();
+            row.classList.add('drag-over');
+            _currentDragTarget = row;
+        }
+    } else if (!row) {
+        // Hovering over blank table area — clear highlight
+        _clearDragTarget();
     }
 }
 
-function onDragLeave(e) {
-    this.classList.remove('drag-over');
+function _onTableDragLeave(e) {
+    // Only clear when the mouse truly leaves the table (not just moves between children)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+        _clearDragTarget();
+    }
 }
 
-async function onDropOnFolder(e) {
+async function _onTableDrop(e) {
     e.preventDefault();
-    e.stopPropagation();
-    this.classList.remove('drag-over');
+    const target = _currentDragTarget;
+    _clearDragTarget();
 
-    if (!draggedEl || draggedEl === this) return;
+    if (!target || !_draggedPath) return;
+    const destPath = (target.getAttribute('data-path') + target.getAttribute('data-id')).replaceAll('//', '/');
+    if (_draggedPath === destPath) return;
 
-    const srcPath = draggedPath;
-    const destFolderPath = (this.getAttribute('data-path') + this.getAttribute('data-id')).replaceAll('//', '/');
-
-    if (!srcPath || !destFolderPath) return;
-
-    // Don't move if dropping into itself
-    if (srcPath === destFolderPath) return;
-
-    await doMove(srcPath, destFolderPath);
+    await _doMove(_draggedPath, destPath);
 }
 
-async function onDropOnTable(e) {
-    e.preventDefault();
-    // Dropped on table (not on a folder row) — no meaningful move needed
+function _clearDragTarget() {
+    if (_currentDragTarget) {
+        _currentDragTarget.classList.remove('drag-over');
+        _currentDragTarget = null;
+    }
 }
 
-function setupRootDropZone() {
+// ── Root drop zone ──
+
+function _setupRootDropZone() {
     const path = getCurrentPath();
-    // Only show root drop zone if we are NOT at root
-    if (path === '/' || path === '') return;
+    if (path === '/' || path === '') return; // already at root
 
-    const existingZone = document.getElementById('root-drop-zone');
-    if (existingZone) existingZone.remove();
+    const existing = document.getElementById('root-drop-zone');
+    if (existing) existing.remove();
 
     const zone = document.createElement('div');
     zone.id = 'root-drop-zone';
     zone.className = 'root-drop-zone';
-    zone.textContent = 'Nach Root verschieben /';
+    zone.textContent = '↑ Nach Root verschieben';
 
     zone.addEventListener('dragover', e => {
         e.preventDefault();
         zone.classList.add('drag-over');
     });
-    zone.addEventListener('dragleave', () => {
-        zone.classList.remove('drag-over');
+    zone.addEventListener('dragleave', e => {
+        if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
     });
     zone.addEventListener('drop', async e => {
         e.preventDefault();
         zone.classList.remove('drag-over');
-        if (!draggedPath) return;
-        await doMove(draggedPath, '/');
+        if (_draggedPath) await _doMove(_draggedPath, '/');
     });
 
-    // Insert below the .directory div
     const mainContent = document.querySelector('.main-content');
-    if (mainContent) {
-        mainContent.appendChild(zone);
-    }
+    if (mainContent) mainContent.appendChild(zone);
 }
 
-async function doMove(sourcePath, destPath) {
+// ── API call ──
+
+async function _doMove(sourcePath, destPath) {
     try {
-        const response = await fetch('/api/move', {
+        const res = await fetch('/api/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                password: getPassword(),
-                source_path: sourcePath,
-                destination_path: destPath
-            })
+            body: JSON.stringify({ password: getPassword(), source_path: sourcePath, destination_path: destPath })
         });
-        const json = await response.json();
+        const json = await res.json();
         if (json.status === 'ok') {
             window.location.reload();
         } else {
             alert('Fehler beim Verschieben: ' + json.status);
         }
-    } catch (e) {
+    } catch {
         alert('Verbindungsfehler beim Verschieben.');
     }
 }
 
-// ── Touch Drag & Drop (mobile) ──
+// ── Touch drag (mobile) ──
 
-let touchDraggedEl = null;
-let touchDraggedPath = null;
-let touchHighlightedEl = null;
+let _touchEl = null;
+let _touchPath = null;
+let _touchTarget = null;
 
-function initTouchDragDrop() {
-    const path = getCurrentPath();
-    if (path.startsWith('/trash') || path.startsWith('/search') || path.startsWith('/share')) {
-        return;
-    }
-
-    const rows = document.querySelectorAll('tr.body-tr');
-    rows.forEach(row => {
-        row.addEventListener('touchstart', onTouchStart, { passive: true });
-        row.addEventListener('touchmove', onTouchMove, { passive: false });
-        row.addEventListener('touchend', onTouchEnd);
+function _initTouchDrag() {
+    document.querySelectorAll('tr.body-tr').forEach(row => {
+        row.addEventListener('touchstart', _onTouchStart, { passive: true });
+        row.addEventListener('touchmove', _onTouchMove, { passive: false });
+        row.addEventListener('touchend', _onTouchEnd);
     });
 }
 
-function onTouchStart(e) {
-    touchDraggedEl = this;
-    touchDraggedPath = (this.getAttribute('data-path') + '/' + this.getAttribute('data-id')).replaceAll('//', '/');
-    this.style.opacity = '0.5';
+function _onTouchStart() {
+    _touchEl = this;
+    _touchPath = (this.getAttribute('data-path') + '/' + this.getAttribute('data-id')).replaceAll('//', '/');
+    setTimeout(() => { if (_touchEl) _touchEl.style.opacity = '0.4'; }, 150);
 }
 
-function onTouchMove(e) {
-    if (!touchDraggedEl) return;
+function _onTouchMove(e) {
+    if (!_touchEl) return;
     e.preventDefault();
-
     const touch = e.touches[0];
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
-
-    // Find nearest folder-tr ancestor
-    const folderRow = el ? el.closest('tr.folder-tr') : null;
-
-    // Clear previous highlight
-    if (touchHighlightedEl && touchHighlightedEl !== folderRow) {
-        touchHighlightedEl.classList.remove('drag-over');
+    const row = el ? el.closest('tr.folder-tr') : null;
+    if (_touchTarget && _touchTarget !== row) {
+        _touchTarget.classList.remove('drag-over');
     }
-
-    if (folderRow && folderRow !== touchDraggedEl) {
-        folderRow.classList.add('drag-over');
-        touchHighlightedEl = folderRow;
+    if (row && row !== _touchEl) {
+        row.classList.add('drag-over');
+        _touchTarget = row;
     } else {
-        touchHighlightedEl = null;
+        _touchTarget = null;
     }
 }
 
-async function onTouchEnd(e) {
-    if (!touchDraggedEl) return;
-
-    touchDraggedEl.style.opacity = '';
-
-    if (touchHighlightedEl) {
-        touchHighlightedEl.classList.remove('drag-over');
-        const destFolderPath = (touchHighlightedEl.getAttribute('data-path') + touchHighlightedEl.getAttribute('data-id')).replaceAll('//', '/');
-        if (touchDraggedPath && destFolderPath && touchDraggedPath !== destFolderPath) {
-            await doMove(touchDraggedPath, destFolderPath);
-        }
+async function _onTouchEnd() {
+    if (!_touchEl) return;
+    _touchEl.style.opacity = '';
+    const target = _touchTarget;
+    if (target) target.classList.remove('drag-over');
+    const src = _touchPath;
+    _touchEl = null; _touchPath = null; _touchTarget = null;
+    if (target && src) {
+        const dest = (target.getAttribute('data-path') + target.getAttribute('data-id')).replaceAll('//', '/');
+        if (src !== dest) await _doMove(src, dest);
     }
-
-    touchDraggedEl = null;
-    touchDraggedPath = null;
-    touchHighlightedEl = null;
 }

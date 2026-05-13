@@ -783,6 +783,7 @@ body {
 
 tr.body-tr[draggable="true"] {
     cursor: grab;
+    -webkit-user-drag: element; /* required in WebKit/Chrome for dragstart to fire */
 }
 
 tr.body-tr[draggable="true"]:active {
@@ -823,20 +824,30 @@ tr.body-tr[draggable="true"]:active {
     line-height: 1;
 }
 
-/* ── Folder Lock Row (in create-folder modal) ── */
+/* ── Folder Lock Row (in create-folder modal) ──
+   Use ID prefix to beat .create-new-folder div (specificity 0,1,1) */
 
-.folder-lock-row {
+#create-new-folder .folder-lock-row {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 8px;
     margin: 4px 0 12px;
+    width: 100%;
 }
 
-.folder-lock-row input[type="checkbox"] {
+#create-new-folder .folder-lock-row input[type="checkbox"] {
     width: 16px;
     height: 16px;
     cursor: pointer;
     accent-color: #8ab4f8;
+    flex-shrink: 0;
+}
+
+#create-new-folder .folder-lock-row label {
+    color: #e3e3e3;
+    font-size: 14px;
+    cursor: pointer;
 }
 
 /* Password input in folder modal */

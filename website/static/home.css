@@ -773,3 +773,152 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* ── Drag & Drop ── */
+
+.drag-over {
+    border: 2px dashed #8ab4f8 !important;
+    background: rgba(138, 180, 248, 0.1) !important;
+}
+
+tr.body-tr[draggable="true"] {
+    cursor: grab;
+}
+
+tr.body-tr[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.root-drop-zone {
+    border: 2px dashed #3c3c3c;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    color: #9aa0a6;
+    font-size: 13px;
+    margin: 8px 16px;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.root-drop-zone.drag-over {
+    border-color: #8ab4f8;
+    background: rgba(138, 180, 248, 0.1);
+    color: #8ab4f8;
+}
+
+/* ── Lock Badge ── */
+
+.folder-icon-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.lock-badge {
+    position: absolute;
+    top: -6px;
+    left: -4px;
+    font-size: 10px;
+    color: #9aa0a6;
+    line-height: 1;
+}
+
+/* ── Folder Lock Row (in create-folder modal) ── */
+
+.folder-lock-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 12px;
+}
+
+.folder-lock-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #8ab4f8;
+}
+
+/* Password input in folder modal */
+#folder-lock-password {
+    width: 100%;
+    padding: 10px 16px;
+    background: #1f1f1f;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    outline: none;
+    font-size: 14px;
+    color: #e3e3e3;
+    margin-bottom: 16px;
+    font-family: 'Google Sans', Roboto, sans-serif;
+    transition: border-color 0.2s;
+}
+
+#folder-lock-password:focus {
+    border-color: #8ab4f8;
+}
+
+#folder-lock-password::placeholder {
+    color: #9aa0a6;
+}
+
+/* Password input in folder-password-modal */
+#folder-password-input {
+    width: 100%;
+    padding: 10px 16px;
+    background: #1f1f1f;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    outline: none;
+    font-size: 14px;
+    color: #e3e3e3;
+    margin-bottom: 16px;
+    font-family: 'Google Sans', Roboto, sans-serif;
+    transition: border-color 0.2s;
+}
+
+#folder-password-input:focus {
+    border-color: #8ab4f8;
+}
+
+#folder-password-input::placeholder {
+    color: #9aa0a6;
+}
+
+/* ── Breadcrumb ── */
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px 4px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 2px;
+    min-height: 36px;
+}
+
+.breadcrumb-link {
+    color: #9aa0a6;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.breadcrumb-link:hover {
+    color: #e3e3e3;
+    background: #3d3d3d;
+}
+
+.breadcrumb-current {
+    color: #e3e3e3;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 2px 4px;
+}
+
+.breadcrumb-sep {
+    color: #9aa0a6;
+    font-size: 18px;
+}

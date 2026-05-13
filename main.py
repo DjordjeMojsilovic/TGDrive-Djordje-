@@ -101,7 +101,8 @@ async def api_new_folder(request: Request):
                     }
                 )
 
-    DRIVE_DATA.new_folder(data["path"], data["name"])
+    password_hash = data.get("password_hash") or None
+    DRIVE_DATA.new_folder(data["path"], data["name"], password_hash)
     return JSONResponse({"status": "ok"})
 
 
@@ -385,6 +386,47 @@ async def ytdlp_import_progress(request: Request):
             return JSONResponse({"status": "ok", "data": list(upload)})
 
     return JSONResponse({"status": "ok", "data": list(progress)})
+
+
+@app.post("/api/move")
+async def move_file_folder(request: Request):
+    from utils.directoryHandler import DRIVE_DATA
+    data = await request.json()
+    if data["password"] != ADMIN_PASSWORD:
+        return JSONResponse({"status": "Invalid password"})
+    try:
+        DRIVE_DATA.move_file_folder(data["source_path"], data["destination_path"])
+        return JSONResponse({"status": "ok"})
+    except Exception as e:
+        return JSONResponse({"status": str(e)})
+
+
+@app.post("/api/checkFolderPassword")
+async def check_folder_password(request: Request):
+    from utils.directoryHandler import DRIVE_DATA
+    data = await request.json()
+    path = data["path"]
+    password_hash = data["password_hash"]
+    try:
+        result = DRIVE_DATA.check_folder_password(path, password_hash)
+        return JSONResponse({"status": "ok" if result else "wrong_password"})
+    except Exception as e:
+        return JSONResponse({"status": str(e)})
+
+
+@app.post("/api/getPathBreadcrumb")
+async def get_path_breadcrumb(request: Request):
+    from utils.directoryHandler import DRIVE_DATA
+    data = await request.json()
+    try:
+        path = data.get("path", "/")
+        # Normalise: skip for special views
+        if "/search_" in path or "/share_" in path or path == "/trash":
+            return JSONResponse({"status": "ok", "data": []})
+        breadcrumb = DRIVE_DATA.get_path_breadcrumb(path)
+        return JSONResponse({"status": "ok", "data": breadcrumb})
+    except Exception as e:
+        return JSONResponse({"status": str(e), "data": []})
 
 
 @app.post("/api/getFolderShareAuth")

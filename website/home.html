@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Djordje Drive</title>
-    <link rel="stylesheet" href="static/home.css?v=3" />
+    <link rel="stylesheet" href="static/home.css?v=4" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 </head>
@@ -84,12 +84,30 @@
         <div id="create-new-folder" class="create-new-folder">
             <span>New Folder</span>
             <input type="text" id="new-folder-name" placeholder="Enter Folder Name" autocomplete="off" />
+            <div class="folder-lock-row">
+                <input type="checkbox" id="folder-lock-check">
+                <label for="folder-lock-check">Ordner sperren 🔒</label>
+            </div>
+            <input type="password" id="folder-lock-password" placeholder="Passwort für Ordner" autocomplete="new-password" style="display:none;" />
             <div>
                 <button id="new-folder-cancel">Cancel</button>
                 <button id="new-folder-create">Create</button>
             </div>
         </div>
         <!-- Create New Folder End -->
+
+        <!-- Folder Password Modal Start -->
+        <div id="folder-password-modal" class="create-new-folder">
+            <span>🔒 Ordner gesperrt</span>
+            <p class="ytdlp-hint">Passwort eingeben um den Ordner zu öffnen</p>
+            <input type="password" id="folder-password-input" placeholder="Passwort" autocomplete="off" />
+            <p class="ytdlp-error-text" id="folder-password-error"></p>
+            <div>
+                <button id="folder-password-cancel">Abbrechen</button>
+                <button id="folder-password-confirm">Öffnen</button>
+            </div>
+        </div>
+        <!-- Folder Password Modal End -->
 
         <!-- File / Folder Rename Start -->
         <div id="rename-file-folder" class="create-new-folder">
@@ -168,6 +186,7 @@
 
         <!-- Main Content Start -->
         <div class="main-content">
+            <div id="breadcrumb" class="breadcrumb"></div>
             <div class="directory">
                 <table>
                     <thead>
@@ -190,6 +209,9 @@
     <script src="static/js/fileClickHandler.js"></script>
     <script src="static/js/main.js"></script>
     <script src="static/js/ytdlpImport.js"></script>
+    <script src="static/js/dragDrop.js"></script>
+    <script src="static/js/lockedFolders.js"></script>
+    <script src="static/js/breadcrumb.js"></script>
 </body>
 
 </html>

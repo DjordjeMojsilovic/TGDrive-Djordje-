@@ -67,7 +67,70 @@ document.getElementById('new-folder-cancel').addEventListener('click', () => {
     }, 300)
 });
 
-document.getElementById('new-folder-create').addEventListener('click', createNewFolder);
+// Wire up folder-lock checkbox to show/hide password field
+document.getElementById('folder-lock-check').addEventListener('change', function () {
+    const pwField = document.getElementById('folder-lock-password');
+    if (this.checked) {
+        pwField.style.display = 'block';
+        pwField.focus();
+    } else {
+        pwField.style.display = 'none';
+        pwField.value = '';
+    }
+});
+
+// New folder create — handle optional password hash
+document.getElementById('new-folder-create').addEventListener('click', async function () {
+    const folderName = document.getElementById('new-folder-name').value;
+    const path = getCurrentPath();
+    if (path === 'redirect') return;
+
+    if (folderName.length === 0) {
+        alert('Folder Name Cannot Be Empty');
+        return;
+    }
+
+    const lockCheck = document.getElementById('folder-lock-check');
+    const lockPw = document.getElementById('folder-lock-password').value;
+
+    let passwordHash = null;
+    if (lockCheck.checked) {
+        if (!lockPw) {
+            alert('Bitte ein Passwort eingeben oder die Sperre deaktivieren.');
+            return;
+        }
+        // Compute SHA-256 of the password
+        const msgBuffer = new TextEncoder().encode(lockPw);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    const bodyData = {
+        name: folderName,
+        path: path,
+        password: getPassword()
+    };
+    if (passwordHash) {
+        bodyData.password_hash = passwordHash;
+    }
+
+    try {
+        const response = await fetch('/api/createNewFolder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyData)
+        });
+        const json = await response.json();
+        if (json.status === 'ok') {
+            window.location.reload();
+        } else {
+            alert(json.status);
+        }
+    } catch (err) {
+        alert('Error Creating Folder');
+    }
+});
 
 // New Folder End
 

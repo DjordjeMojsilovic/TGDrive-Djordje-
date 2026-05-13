@@ -4,19 +4,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TG Drive - Video Player</title>
+    <title>Djordje Drive - Video Player</title>
 
     <link href="//vjs.zencdn.net/8.3.0/video-js.min.css" rel="stylesheet">
     <script src="//vjs.zencdn.net/8.3.0/video.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Google Sans', Roboto, sans-serif;
+        }
+
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            background-color: #1f1f1f;
+            color: #e3e3e3;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 400;
+            color: #9aa0a6;
+            margin-bottom: 24px;
         }
 
         .video-container {
@@ -27,29 +42,35 @@
         .buttons-container {
             margin-top: 20px;
             display: flex;
-            justify-content: space-evenly;
+            justify-content: center;
+            gap: 12px;
             width: 90%;
             max-width: 800px;
         }
 
         .copy-button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: 'Google Sans', Roboto, sans-serif;
             cursor: pointer;
-            background-color: #007bff;
-            color: white;
+            background-color: #4a90d9;
+            color: #fff;
             border: none;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
+            border-radius: 24px;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
 
         .copy-button:hover {
-            background-color: #0056b3;
+            background-color: #3a7bc8;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
         }
     </style>
 </head>
 
 <body>
+    <span class="page-title">Djordje Drive — Video Player</span>
 
     <div class="video-container">
         <video id="my-player" class="video-js vjs-fluid" controls preload="auto" data-setup='{}'>

@@ -818,10 +818,307 @@ tr.body-tr[draggable="true"]:active {
 .lock-badge {
     position: absolute;
     top: -6px;
-    left: -4px;
-    font-size: 10px;
-    color: #9aa0a6;
+    right: -10px;
+    font-size: 14px;
+    color: #f6c84b;
     line-height: 1;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+
+/* Inline-flex variant for picker list rows */
+.move-picker-row .lock-badge {
+    position: static;
+    margin-left: 6px;
+    font-size: 14px;
+}
+
+/* ── Sidebar collapse (hamburger toggle) ── */
+.sidebar {
+    transition: width 0.25s ease, opacity 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar.collapsed {
+    width: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.container.sidebar-collapsed {
+    grid-template-columns: 0 1fr;
+    transition: grid-template-columns 0.25s ease;
+}
+
+.container {
+    transition: grid-template-columns 0.25s ease;
+}
+
+/* Icon-btn active state */
+.icon-btn.active {
+    background: #394457;
+    color: #8ab4f8;
+}
+
+.icon-btn.active .material-icons {
+    color: #8ab4f8;
+}
+
+/* Avatar interactive style */
+.avatar {
+    transition: opacity 0.15s ease;
+}
+
+.avatar:hover {
+    opacity: 0.85;
+}
+
+/* ── Grid View ── */
+.directory.grid-view table thead {
+    display: none;
+}
+
+.directory.grid-view table,
+.directory.grid-view tbody {
+    display: block;
+    width: 100%;
+}
+
+.directory.grid-view tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    padding: 16px;
+}
+
+.directory.grid-view tr.body-tr {
+    display: flex;
+    flex-direction: column;
+    background: #2d2d2d;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 180px;
+    transition: background 0.2s, border-color 0.2s;
+    cursor: pointer;
+}
+
+.directory.grid-view tr.body-tr:hover {
+    background: #353535;
+    border-color: #4a90d9;
+}
+
+.directory.grid-view tr.body-tr td {
+    border-bottom: none;
+    padding: 0;
+    height: auto;
+}
+
+.directory.grid-view tr.body-tr td:nth-child(1) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.directory.grid-view tr.body-tr td:nth-child(2) {
+    padding: 4px 12px;
+    font-size: 12px;
+    color: #9aa0a6;
+}
+
+.directory.grid-view tr.body-tr td:nth-child(3) {
+    padding: 4px 8px;
+    align-self: flex-end;
+}
+
+.directory.grid-view .td-align {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    height: 100%;
+}
+
+.directory.grid-view .thumb {
+    width: 100%;
+    height: 120px;
+    background: #1f1f1f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.directory.grid-view .thumb img,
+.directory.grid-view .thumb video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.directory.grid-view .thumb .material-icons {
+    font-size: 56px;
+    color: #9aa0a6;
+}
+
+.directory.grid-view .thumb .folder-icon {
+    color: #f6c84b;
+    font-size: 56px;
+}
+
+.directory.grid-view .thumb .lock-badge {
+    top: 6px;
+    right: 6px;
+    font-size: 18px;
+}
+
+.directory.grid-view .grid-name {
+    padding: 8px 12px 4px;
+    font-size: 13px;
+    color: #e3e3e3;
+    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.directory.grid-view .row-check {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    padding: 2px;
+}
+
+/* ── Management Mode ── */
+.row-check {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+body.management-mode .row-check {
+    display: flex;
+}
+
+body.management-mode tr.body-tr {
+    cursor: pointer;
+}
+
+.row-check input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #8ab4f8;
+}
+
+#mgmt-bar {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2d2d2d;
+    border: 1px solid #3c3c3c;
+    border-radius: 24px;
+    padding: 8px 16px;
+    display: none;
+    align-items: center;
+    gap: 4px;
+    z-index: 5;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    flex-wrap: wrap;
+    max-width: calc(100vw - 32px);
+}
+
+body.management-mode #mgmt-bar {
+    display: flex;
+}
+
+#mgmt-bar button {
+    background: transparent;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Google Sans', Roboto, sans-serif;
+    color: #8ab4f8;
+    padding: 8px 14px;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#mgmt-bar button .material-icons {
+    font-size: 18px;
+}
+
+#mgmt-bar button:hover {
+    background: #394457;
+}
+
+#mgmt-count {
+    color: #9aa0a6;
+    font-size: 12px;
+    margin-left: 8px;
+    padding-right: 4px;
+}
+
+/* ── Move Picker Modal ── */
+.move-picker-list {
+    width: 100%;
+    max-height: 320px;
+    overflow-y: auto;
+    background: #1f1f1f;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.move-picker-row {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #e3e3e3;
+    font-size: 14px;
+    transition: background 0.15s;
+    border-bottom: 1px solid #2d2d2d;
+}
+
+.move-picker-row:last-child {
+    border-bottom: none;
+}
+
+.move-picker-row:hover {
+    background: #3d3d3d;
+}
+
+.move-picker-row.selected {
+    background: #394457;
+    color: #8ab4f8;
+}
+
+.move-picker-row .material-icons {
+    font-size: 18px;
+    color: #f6c84b;
+    flex-shrink: 0;
+}
+
+.move-picker-row.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 /* ── Folder Lock Row (in create-folder modal) ──

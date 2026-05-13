@@ -310,6 +310,93 @@ class NewDriveData:
                     new_folder_full + "/" + child.id
                 )
 
+    def is_path_locked(self, path: str, unlocks: dict = None):
+        """Walk the path chain (root → leaf). For each folder along the way
+        that has a password_hash set, require unlocks[folder.id] == hash.
+        Returns the id of the first folder that is locked and not authorised,
+        or None if the entire path is accessible.
+
+        `path` may point to either a folder or a file (item id at the tail).
+        Only folders along the chain are checked. The terminal item, if it is
+        a folder, IS included in the check.
+        """
+        if unlocks is None:
+            unlocks = {}
+
+        if path is None:
+            return None
+
+        # Normalise
+        clean = path.strip("/")
+        if clean == "" or clean == "trash":
+            return None
+        if clean.startswith("search_") or clean.startswith("share_"):
+            return None
+
+        parts = clean.split("/")
+        try:
+            folder = self.contents["/"]
+        except Exception:
+            return None
+
+        # Walk each segment; if it resolves to a folder, gate it.
+        for part in parts:
+            try:
+                node = folder.contents[part]
+            except Exception:
+                # Path no longer valid; treat as not locked (other endpoints
+                # will surface the underlying error).
+                return None
+            if getattr(node, "type", None) == "folder":
+                pwd = getattr(node, "password_hash", None)
+                if pwd:
+                    supplied = unlocks.get(node.id) or unlocks.get(part)
+                    if supplied != pwd:
+                        return node.id
+                folder = node
+            else:
+                # File — terminal; no gating beyond parent folders.
+                break
+
+        return None
+
+    def get_all_folders_flat(self) -> list:
+        """Return a flat, depth-tagged list of every non-trashed folder.
+        Used by the move-to-folder picker. Each entry:
+          {id, name, path, depth, has_password}
+        `path` is the full path TO the folder (i.e. parent + id).
+        """
+        result = []
+
+        def walk(folder, parent_path, depth):
+            # Skip trashed folders entirely (and their descendants).
+            if getattr(folder, "trash", False):
+                return
+            # Don't include the synthetic root in the list — callers add it.
+            for child in folder.contents.values():
+                if getattr(child, "type", None) != "folder":
+                    continue
+                if getattr(child, "trash", False):
+                    continue
+                # full path to this child folder
+                child_path = (parent_path.rstrip("/") + "/" + child.id).replace("//", "/")
+                if not child_path.startswith("/"):
+                    child_path = "/" + child_path
+                result.append({
+                    "id": child.id,
+                    "name": child.name,
+                    "path": child_path,
+                    "depth": depth,
+                    "has_password": getattr(child, "password_hash", None) is not None,
+                })
+                walk(child, child_path, depth + 1)
+
+        root = self.contents["/"]
+        walk(root, "/", 0)
+        # Sort siblings by name within each depth group is hard to express
+        # while preserving tree order. Caller renders in insertion order.
+        return result
+
     def get_path_breadcrumb(self, path: str) -> list:
         """Return list of {id, name, path} for each path segment, starting with root."""
         breadcrumb = [{"id": "root", "name": "Djordje Drive", "path": "/"}]

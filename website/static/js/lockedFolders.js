@@ -10,6 +10,41 @@ function markFolderUnlocked(folderId) {
     sessionStorage.setItem('unlocked_' + folderId, '1');
 }
 
+// Cache the password-hash itself so backend can verify subsequent operations
+function setFolderUnlockHash(folderId, hash) {
+    sessionStorage.setItem('pwhash_' + folderId, hash);
+}
+
+function getFolderUnlockHash(folderId) {
+    return sessionStorage.getItem('pwhash_' + folderId);
+}
+
+// Returns {folderId: hash} for every cached unlock — sent to the backend
+// inside every API call body as `unlocks`.
+function getUnlocksMap() {
+    const map = {};
+    try {
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key && key.startsWith('pwhash_')) {
+                const id = key.slice('pwhash_'.length);
+                const val = sessionStorage.getItem(key);
+                if (val) map[id] = val;
+            }
+        }
+    } catch (e) { /* ignore */ }
+    return map;
+}
+
+// Generic helper: when an API call returns {status: 'locked', folder_id},
+// prompt for the password of that folder and re-run `retryFn` on success.
+// `retryFn` is invoked with no args and should perform the original API call.
+function withFolderUnlock(folderId, folderPath, retryFn) {
+    showFolderPasswordModal(folderId, folderPath || '/' + folderId, async () => {
+        try { await retryFn(); } catch (e) { console.error(e); }
+    });
+}
+
 // ── SHA-256 hash helper ──
 
 async function sha256(message) {
@@ -75,6 +110,8 @@ async function confirmFolderPassword() {
 
         if (json.status === 'ok') {
             markFolderUnlocked(_pwdModalFolderId);
+            // ALSO store the hash so future API calls can include it in `unlocks`
+            setFolderUnlockHash(_pwdModalFolderId, hash);
             closeFolderPasswordModal();
             if (_pwdModalSuccessCallback) {
                 _pwdModalSuccessCallback(_pwdModalFolderId);

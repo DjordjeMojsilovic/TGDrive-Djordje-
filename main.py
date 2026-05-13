@@ -39,12 +39,19 @@ logger = Logger(__name__)
 
 @app.get("/")
 async def home_page():
-    return FileResponse("website/home.html")
+    response = FileResponse("website/home.html")
+    response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.get("/stream")
 async def home_page():
-    return FileResponse("website/VideoPlayer.html")
+    response = FileResponse("website/VideoPlayer.html")
+    response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    return response
 
 
 @app.get("/static/{file_path:path}")
@@ -89,6 +96,11 @@ async def api_new_folder(request: Request):
     if data["password"] != ADMIN_PASSWORD:
         return JSONResponse({"status": "Invalid password"})
 
+    unlocks = data.get("unlocks") or {}
+    locked_id = DRIVE_DATA.is_path_locked(data["path"], unlocks)
+    if locked_id:
+        return JSONResponse({"status": "locked", "folder_id": locked_id})
+
     logger.info(f"createNewFolder {data}")
     folder_data = DRIVE_DATA.get_directory(data["path"]).contents
     for id in folder_data:
@@ -118,8 +130,20 @@ async def api_get_directory(request: Request):
         is_admin = False
 
     auth = data.get("auth")
+    unlocks = data.get("unlocks") or {}
 
     logger.info(f"getFolder {data}")
+
+    # Lock enforcement for normal directory listings (not trash/search/share)
+    path_for_lock = data["path"]
+    if (
+        path_for_lock != "/trash"
+        and "/search_" not in path_for_lock
+        and "/share_" not in path_for_lock
+    ):
+        locked_id = DRIVE_DATA.is_path_locked(path_for_lock, unlocks)
+        if locked_id:
+            return JSONResponse({"status": "locked", "folder_id": locked_id})
 
     if data["path"] == "/trash":
         data = {"contents": DRIVE_DATA.get_trashed_files_folders()}
@@ -158,11 +182,22 @@ async def upload_file(
     password: str = Form(...),
     id: str = Form(...),
     total_size: str = Form(...),
+    unlocks: str = Form("{}"),
 ):
     global SAVE_PROGRESS
 
     if password != ADMIN_PASSWORD:
         return JSONResponse({"status": "Invalid password"})
+
+    from utils.directoryHandler import DRIVE_DATA
+    import json as _json
+    try:
+        unlocks_map = _json.loads(unlocks) if unlocks else {}
+    except Exception:
+        unlocks_map = {}
+    locked_id = DRIVE_DATA.is_path_locked(path, unlocks_map)
+    if locked_id:
+        return JSONResponse({"status": "locked", "folder_id": locked_id})
 
     total_size = int(total_size)
     SAVE_PROGRESS[id] = ("running", 0, total_size)
@@ -258,6 +293,10 @@ async def rename_file_folder(request: Request):
         return JSONResponse({"status": "Invalid password"})
 
     logger.info(f"renameFileFolder {data}")
+    unlocks = data.get("unlocks") or {}
+    locked_id = DRIVE_DATA.is_path_locked(data["path"], unlocks)
+    if locked_id:
+        return JSONResponse({"status": "locked", "folder_id": locked_id})
     DRIVE_DATA.rename_file_folder(data["path"], data["name"])
     return JSONResponse({"status": "ok"})
 
@@ -272,6 +311,10 @@ async def trash_file_folder(request: Request):
         return JSONResponse({"status": "Invalid password"})
 
     logger.info(f"trashFileFolder {data}")
+    unlocks = data.get("unlocks") or {}
+    locked_id = DRIVE_DATA.is_path_locked(data["path"], unlocks)
+    if locked_id:
+        return JSONResponse({"status": "locked", "folder_id": locked_id})
     DRIVE_DATA.trash_file_folder(data["path"], data["trash"])
     return JSONResponse({"status": "ok"})
 
@@ -286,6 +329,10 @@ async def delete_file_folder(request: Request):
         return JSONResponse({"status": "Invalid password"})
 
     logger.info(f"deleteFileFolder {data}")
+    unlocks = data.get("unlocks") or {}
+    locked_id = DRIVE_DATA.is_path_locked(data["path"], unlocks)
+    if locked_id:
+        return JSONResponse({"status": "locked", "folder_id": locked_id})
     DRIVE_DATA.delete_file_folder(data["path"])
     return JSONResponse({"status": "ok"})
 
@@ -394,11 +441,137 @@ async def move_file_folder(request: Request):
     data = await request.json()
     if data["password"] != ADMIN_PASSWORD:
         return JSONResponse({"status": "Invalid password"})
+    unlocks = data.get("unlocks") or {}
+    src_locked = DRIVE_DATA.is_path_locked(data["source_path"], unlocks)
+    if src_locked:
+        return JSONResponse({"status": "locked", "folder_id": src_locked})
+    dst_locked = DRIVE_DATA.is_path_locked(data["destination_path"], unlocks)
+    if dst_locked:
+        return JSONResponse({"status": "locked", "folder_id": dst_locked})
     try:
         DRIVE_DATA.move_file_folder(data["source_path"], data["destination_path"])
         return JSONResponse({"status": "ok"})
     except Exception as e:
         return JSONResponse({"status": str(e)})
+
+
+@app.post("/api/bulkMove")
+async def bulk_move(request: Request):
+    from utils.directoryHandler import DRIVE_DATA
+    data = await request.json()
+    if data.get("password") != ADMIN_PASSWORD:
+        return JSONResponse({"status": "Invalid password"})
+
+    unlocks = data.get("unlocks") or {}
+    destination_path = data.get("destination_path", "/")
+    sources = data.get("sources") or []
+
+    dst_locked = DRIVE_DATA.is_path_locked(destination_path, unlocks)
+    if dst_locked:
+        return JSONResponse({"status": "locked", "folder_id": dst_locked})
+
+    errors = []
+    moved = 0
+    for src in sources:
+        src_locked = DRIVE_DATA.is_path_locked(src, unlocks)
+        if src_locked:
+            errors.append({"path": src, "error": "locked", "folder_id": src_locked})
+            continue
+        try:
+            DRIVE_DATA.move_file_folder(src, destination_path)
+            moved += 1
+        except Exception as e:
+            errors.append({"path": src, "error": str(e)})
+    return JSONResponse({"status": "ok", "moved": moved, "errors": errors})
+
+
+@app.post("/api/bulkDelete")
+async def bulk_delete(request: Request):
+    """Trash a list of items (sends to trash; same semantic as /api/trashFileFolder with trash=true)."""
+    from utils.directoryHandler import DRIVE_DATA
+    data = await request.json()
+    if data.get("password") != ADMIN_PASSWORD:
+        return JSONResponse({"status": "Invalid password"})
+
+    unlocks = data.get("unlocks") or {}
+    paths = data.get("paths") or []
+
+    errors = []
+    deleted = 0
+    for p in paths:
+        locked_id = DRIVE_DATA.is_path_locked(p, unlocks)
+        if locked_id:
+            errors.append({"path": p, "error": "locked", "folder_id": locked_id})
+            continue
+        try:
+            DRIVE_DATA.trash_file_folder(p, True)
+            deleted += 1
+        except Exception as e:
+            errors.append({"path": p, "error": str(e)})
+    return JSONResponse({"status": "ok", "deleted": deleted, "errors": errors})
+
+
+@app.post("/api/bulkPackIntoNewFolder")
+async def bulk_pack_into_new_folder(request: Request):
+    """Create a new folder in parent_path and move all `paths` into it."""
+    from utils.directoryHandler import DRIVE_DATA
+    data = await request.json()
+    if data.get("password") != ADMIN_PASSWORD:
+        return JSONResponse({"status": "Invalid password"})
+
+    unlocks = data.get("unlocks") or {}
+    parent_path = data.get("parent_path", "/")
+    new_folder_name = (data.get("new_folder_name") or "").strip()
+    paths = data.get("paths") or []
+    password_hash = data.get("password_hash") or None
+
+    if not new_folder_name:
+        return JSONResponse({"status": "Folder name is required"})
+
+    parent_locked = DRIVE_DATA.is_path_locked(parent_path, unlocks)
+    if parent_locked:
+        return JSONResponse({"status": "locked", "folder_id": parent_locked})
+
+    # Ensure no name collision in parent
+    parent_folder = DRIVE_DATA.get_directory(parent_path)
+    for child_id in parent_folder.contents:
+        child = parent_folder.contents[child_id]
+        if getattr(child, "type", None) == "folder" and child.name == new_folder_name:
+            return JSONResponse({"status": "Folder with the name already exist in current directory"})
+
+    new_path = DRIVE_DATA.new_folder(parent_path, new_folder_name, password_hash)
+    # `new_folder` returns "<parent_path>/<folder_id>"; that's the destination path
+    destination_path = new_path
+
+    errors = []
+    moved = 0
+    for src in paths:
+        src_locked = DRIVE_DATA.is_path_locked(src, unlocks)
+        if src_locked:
+            errors.append({"path": src, "error": "locked", "folder_id": src_locked})
+            continue
+        try:
+            DRIVE_DATA.move_file_folder(src, destination_path)
+            moved += 1
+        except Exception as e:
+            errors.append({"path": src, "error": str(e)})
+
+    return JSONResponse({"status": "ok", "moved": moved, "errors": errors, "destination": destination_path})
+
+
+@app.post("/api/getAllFolders")
+async def get_all_folders(request: Request):
+    """Flat list of non-trashed folders for the move-to-folder picker.
+    Auth is the admin password (same as every other API)."""
+    from utils.directoryHandler import DRIVE_DATA
+    data = await request.json()
+    if data.get("password") != ADMIN_PASSWORD:
+        return JSONResponse({"status": "Invalid password"})
+    try:
+        folders = DRIVE_DATA.get_all_folders_flat()
+        return JSONResponse({"status": "ok", "data": folders})
+    except Exception as e:
+        return JSONResponse({"status": str(e), "data": []})
 
 
 @app.post("/api/checkFolderPassword")

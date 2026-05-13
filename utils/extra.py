@@ -26,6 +26,7 @@ def convert_class_to_dict(data, isObject, showtrash=False):
                     "id": folder.id,
                     "path": folder.path,
                     "upload_date": folder.upload_date,
+                    "has_password": getattr(folder, "password_hash", None) is not None,
                 }
             else:
                 file = data["contents"][key]

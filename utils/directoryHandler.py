@@ -43,6 +43,7 @@ class Folder:
         self.path = ("/" + path.strip("/") + "/").replace("//", "/")
         self.upload_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.auth_hashes = []
+        self.password_hash = None
 
 
 class File:
@@ -75,10 +76,11 @@ class NewDriveData:
         self.isUpdated = True
         logger.info("Drive data saved successfully.")
 
-    def new_folder(self, path: str, name: str) -> None:
+    def new_folder(self, path: str, name: str, password_hash: str = None) -> str:
         logger.info(f"Creating new folder '{name}' in path '{path}'.")
 
         folder = Folder(name, path)
+        folder.password_hash = password_hash
         if path == "/":
             directory_folder: Folder = self.contents[path]
             directory_folder.contents[folder.id] = folder
@@ -249,6 +251,80 @@ class NewDriveData:
         logger.info(f"Search completed. Found {len(search_results)} matching items.")
         return search_results
 
+    def set_folder_password(self, path: str, password_hash: str) -> None:
+        folder = self.get_directory(path)
+        folder.password_hash = password_hash
+        self.save()
+        logger.info(f"Password set for folder at path '{path}'.")
+
+    def check_folder_password(self, path: str, password_hash: str) -> bool:
+        folder = self.get_directory(path)
+        return folder.password_hash == password_hash
+
+    def move_file_folder(self, source_path: str, dest_path: str) -> None:
+        """Move item at source_path into the folder at dest_path."""
+        parts = source_path.strip("/").split("/")
+        item_id = parts[-1]
+        source_parent_path = ("/" + "/".join(parts[:-1])).replace("//", "/")
+        if source_parent_path == "":
+            source_parent_path = "/"
+
+        source_parent = self.get_directory(source_parent_path)
+        item = source_parent.contents[item_id]
+        dest_folder = self.get_directory(dest_path)
+
+        # Prevent moving folder into itself or a descendant
+        if item.type == "folder":
+            norm_dest = "/" + dest_path.strip("/")
+            norm_src = "/" + source_path.strip("/")
+            if norm_dest == norm_src or norm_dest.startswith(norm_src + "/"):
+                raise ValueError("Cannot move a folder into itself or its descendant")
+
+        # Update item's own path attribute
+        if item.type == "file":
+            item.path = dest_path.rstrip("/") or ""
+        elif item.type == "folder":
+            new_parent_str = (dest_path.rstrip("/") + "/").replace("//", "/")
+            old_full = source_parent_path.rstrip("/") + "/" + item_id
+            new_full = dest_path.rstrip("/") + "/" + item_id
+            old_full = old_full.replace("//", "/")
+            new_full = new_full.replace("//", "/")
+            item.path = new_parent_str
+            self._update_children_paths(item, old_full, new_full)
+
+        del source_parent.contents[item_id]
+        dest_folder.contents[item_id] = item
+        self.save()
+        logger.info(f"Moved item from '{source_path}' to '{dest_path}'.")
+
+    def _update_children_paths(self, folder, old_folder_full, new_folder_full):
+        """Recursively update path attributes of all items inside folder after it was moved."""
+        for child in folder.contents.values():
+            if child.type == "file":
+                child.path = new_folder_full
+            elif child.type == "folder":
+                child.path = new_folder_full + "/"
+                self._update_children_paths(
+                    child,
+                    old_folder_full + "/" + child.id,
+                    new_folder_full + "/" + child.id
+                )
+
+    def get_path_breadcrumb(self, path: str) -> list:
+        """Return list of {id, name, path} for each path segment, starting with root."""
+        breadcrumb = [{"id": "root", "name": "Djordje Drive", "path": "/"}]
+        if path == "/" or path == "":
+            return breadcrumb
+
+        parts = path.strip("/").split("/")
+        folder = self.contents["/"]
+        current_path = "/"
+        for part in parts:
+            folder = folder.contents[part]
+            current_path = current_path.rstrip("/") + "/" + part
+            breadcrumb.append({"id": part, "name": folder.name, "path": current_path})
+        return breadcrumb
+
 
 class NewBotMode:
     def __init__(self, drive_data: NewDriveData) -> None:
@@ -325,6 +401,8 @@ async def init_drive_data():
     root_dir = DRIVE_DATA.get_directory("/")
     if not hasattr(root_dir, "auth_hashes"):
         root_dir.auth_hashes = []
+    if not hasattr(root_dir, "password_hash"):
+        root_dir.password_hash = None
 
     def traverse_directory(folder):
         for item in folder.contents.values():
@@ -333,6 +411,8 @@ async def init_drive_data():
 
                 if not hasattr(item, "auth_hashes"):
                     item.auth_hashes = []
+                if not hasattr(item, "password_hash"):
+                    item.password_hash = None
 
     traverse_directory(root_dir)
     DRIVE_DATA.save()

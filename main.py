@@ -338,6 +338,52 @@ async def getFileDownloadProgress(request: Request):
         return JSONResponse({"status": "not found"})
 
 
+@app.post("/api/ytdlp-import")
+async def ytdlp_import(request: Request):
+    from utils.ytdlp_downloader import ytdlp_download_and_upload
+
+    data = await request.json()
+
+    if data.get("password") != ADMIN_PASSWORD:
+        return JSONResponse({"status": "Invalid password"})
+
+    url = (data.get("url") or "").strip()
+    path = data.get("path", "/")
+
+    if not url:
+        return JSONResponse({"status": "URL is required"})
+
+    logger.info(f"ytdlp-import url={url} path={path}")
+    id = getRandomID()
+    asyncio.create_task(ytdlp_download_and_upload(url, id, path))
+    return JSONResponse({"status": "ok", "id": id})
+
+
+@app.post("/api/ytdlp-import-progress")
+async def ytdlp_import_progress(request: Request):
+    from utils.ytdlp_downloader import YTDLP_PROGRESS
+    from utils.uploader import PROGRESS_CACHE
+
+    data = await request.json()
+
+    if data.get("password") != ADMIN_PASSWORD:
+        return JSONResponse({"status": "Invalid password"})
+
+    id = data.get("id")
+    progress = YTDLP_PROGRESS.get(id)
+
+    if progress is None:
+        return JSONResponse({"status": "not found"})
+
+    # While uploading, proxy the live Telegram upload progress
+    if progress[0] == "uploading":
+        upload = PROGRESS_CACHE.get(id)
+        if upload and upload[0] == "running":
+            return JSONResponse({"status": "ok", "data": list(upload)})
+
+    return JSONResponse({"status": "ok", "data": list(progress)})
+
+
 @app.post("/api/getFolderShareAuth")
 async def getFolderShareAuth(request: Request):
     from utils.directoryHandler import DRIVE_DATA

@@ -43,36 +43,39 @@ document.getElementById('file-upload-btn').addEventListener('click', () => {
 
 // New Folder Start
 
-document.getElementById('new-folder-btn').addEventListener('click', () => {
+function _resetNewFolderModal() {
     document.getElementById('new-folder-name').value = '';
+    document.getElementById('folder-lock-check').checked = false;
+    const pwField = document.getElementById('folder-lock-password');
+    pwField.value = '';
+    pwField.style.display = 'none';
+}
+
+document.getElementById('new-folder-btn').addEventListener('click', () => {
+    _resetNewFolderModal();
     document.getElementById('bg-blur').style.zIndex = '2';
     document.getElementById('bg-blur').style.opacity = '0.1';
-
     document.getElementById('create-new-folder').style.zIndex = '3';
     document.getElementById('create-new-folder').style.opacity = '1';
     setTimeout(() => {
         document.getElementById('new-folder-name').focus();
-    }, 300)
-})
-
-document.getElementById('new-folder-cancel').addEventListener('click', () => {
-    document.getElementById('new-folder-name').value = '';
-    document.getElementById('bg-blur').style.opacity = '0';
-    setTimeout(() => {
-        document.getElementById('bg-blur').style.zIndex = '-1';
-    }, 300)
-    document.getElementById('create-new-folder').style.opacity = '0';
-    setTimeout(() => {
-        document.getElementById('create-new-folder').style.zIndex = '-1';
-    }, 300)
+    }, 300);
 });
 
-// Wire up folder-lock checkbox to show/hide password field
+document.getElementById('new-folder-cancel').addEventListener('click', () => {
+    _resetNewFolderModal();
+    document.getElementById('bg-blur').style.opacity = '0';
+    setTimeout(() => { document.getElementById('bg-blur').style.zIndex = '-1'; }, 300);
+    document.getElementById('create-new-folder').style.opacity = '0';
+    setTimeout(() => { document.getElementById('create-new-folder').style.zIndex = '-1'; }, 300);
+});
+
+// Toggle password field when lock checkbox changes
 document.getElementById('folder-lock-check').addEventListener('change', function () {
     const pwField = document.getElementById('folder-lock-password');
     if (this.checked) {
         pwField.style.display = 'block';
-        pwField.focus();
+        setTimeout(() => pwField.focus(), 50);
     } else {
         pwField.style.display = 'none';
         pwField.value = '';

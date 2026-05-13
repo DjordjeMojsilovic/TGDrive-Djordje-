@@ -53,8 +53,11 @@ async def static_files(file_path):
         with open(Path("website/static/js/apiHandler.js")) as f:
             content = f.read()
             content = content.replace("MAX_FILE_SIZE__SDGJDG", str(MAX_FILE_SIZE))
-        return Response(content=content, media_type="application/javascript")
-    return FileResponse(f"website/static/{file_path}")
+        return Response(content=content, media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache"})
+    response = FileResponse(f"website/static/{file_path}")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 @app.get("/file")

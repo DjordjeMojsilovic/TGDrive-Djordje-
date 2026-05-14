@@ -43,14 +43,18 @@ async def ytdlp_download_and_upload(url: str, id: str, drive_path: str):
     try:
         ydl_opts = {
             "outtmpl": str(tmpdir / "%(title)s.%(ext)s"),
-            # With ffmpeg available: merge best video+audio into mp4.
-            # Fallback chain ensures something downloads even on sites that
-            # only offer pre-merged streams.
-            "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
-            "merge_output_format": "mp4",
+            # Pre-merged stream under 1.9 GB — no ffmpeg merge step needed.
+            # Fallback to best available if no format meets the size constraint.
+            "format": "best[filesize<1900M]/best",
             "quiet": True,
             "no_warnings": True,
             "progress_hooks": [_make_progress_hook(id)],
+            # Simulate an Android YouTube client so YouTube serves pre-merged
+            # streams without bot-protection or sign-in requirements.
+            "extractor_args": {"youtube": {"player_client": ["android"]}},
+            "http_headers": {
+                "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12) gzip",
+            },
             # Limit to one item so playlists don't explode
             "playlist_items": "1",
             "noplaylist": True,

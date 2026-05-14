@@ -43,18 +43,25 @@ async def ytdlp_download_and_upload(url: str, id: str, drive_path: str):
     try:
         ydl_opts = {
             "outtmpl": str(tmpdir / "%(title)s.%(ext)s"),
-            # Pre-merged stream under 1.9 GB — no ffmpeg merge step needed.
-            # Fallback to best available if no format meets the size constraint.
             "format": "best[filesize<1900M]/best",
             "quiet": True,
             "no_warnings": True,
             "progress_hooks": [_make_progress_hook(id)],
-            # Simulate an Android YouTube client so YouTube serves pre-merged
-            # streams without bot-protection or sign-in requirements.
-            "extractor_args": {"youtube": {"player_client": ["android"]}},
-            "http_headers": {
-                "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12) gzip",
+            # tv_embedded bypasses YouTube's bot-protection: the embedded TV
+            # client is whitelisted and doesn't require sign-in or PO tokens.
+            # player_skip=['webpage'] avoids fetching the full watch page,
+            # which is where most bot-detection happens.
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["tv_embedded"],
+                    "player_skip": ["webpage"],
+                }
             },
+            # oauth2 plugin (yt-dlp-youtube-oauth2) — provides PO tokens via
+            # device-flow OAuth so age-restricted / sign-in-required videos
+            # also work. Silently ignored if the plugin is not installed.
+            "use_oauth2": True,
+            "allow_unplayable_formats": True,
             # Limit to one item so playlists don't explode
             "playlist_items": "1",
             "noplaylist": True,

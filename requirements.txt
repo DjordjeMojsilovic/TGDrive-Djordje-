@@ -9,4 +9,5 @@ curl_cffi
 techzdl>=1.2.6
 tqdm
 dill
-yt-dlp
+yt-dlp[default]
+yt-dlp-youtube-oauth2

@@ -1,4 +1,5 @@
 import asyncio
+import os
 import shutil
 from pathlib import Path
 
@@ -11,6 +12,11 @@ YTDLP_PROGRESS = {}
 
 cache_dir = Path("./cache")
 cache_dir.mkdir(parents=True, exist_ok=True)
+
+# Optional path to a Netscape-format cookies file (e.g. exported from a browser).
+# Set the YTDLP_COOKIES_FILE environment variable to the absolute path of the file.
+# Required for Instagram reels/posts that need a logged-in session.
+_COOKIES_FILE = os.environ.get("YTDLP_COOKIES_FILE", "")
 
 
 def _make_progress_hook(id: str):
@@ -37,8 +43,10 @@ async def ytdlp_download_and_upload(url: str, id: str, drive_path: str):
     try:
         ydl_opts = {
             "outtmpl": str(tmpdir / "%(title)s.%(ext)s"),
-            # Prefer a single merged mp4; fall back to best single-stream mp4; fall back to anything
-            "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            # With ffmpeg available: merge best video+audio into mp4.
+            # Fallback chain ensures something downloads even on sites that
+            # only offer pre-merged streams.
+            "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
             "merge_output_format": "mp4",
             "quiet": True,
             "no_warnings": True,
@@ -47,6 +55,12 @@ async def ytdlp_download_and_upload(url: str, id: str, drive_path: str):
             "playlist_items": "1",
             "noplaylist": True,
         }
+
+        # Attach cookies file if configured — needed for Instagram, Twitter/X,
+        # and other platforms that require a logged-in session.
+        if _COOKIES_FILE and Path(_COOKIES_FILE).is_file():
+            ydl_opts["cookiefile"] = _COOKIES_FILE
+            logger.info(f"ytdlp: using cookies file {_COOKIES_FILE}")
 
         loop = asyncio.get_event_loop()
 
@@ -82,7 +96,16 @@ async def ytdlp_download_and_upload(url: str, id: str, drive_path: str):
         logger.info(f"ytdlp import completed for {url} ({filename})")
 
     except Exception as e:
+        error_msg = str(e)
+        # Provide clearer messages for the two most common failure modes
+        if "ffmpeg is not installed" in error_msg:
+            error_msg = "ffmpeg fehlt auf dem Server. Bitte im Dockerfile installieren."
+        elif "empty media response" in error_msg or "cookies" in error_msg.lower():
+            error_msg = (
+                "Login erforderlich. Setze YTDLP_COOKIES_FILE auf einen Pfad zu einer "
+                "Netscape-cookies.txt (z.B. mit der Browser-Extension 'Get cookies.txt')."
+            )
         logger.error(f"ytdlp import failed for {url}: {e}")
-        YTDLP_PROGRESS[id] = ("error", str(e)[:300], 0)
+        YTDLP_PROGRESS[id] = ("error", error_msg[:400], 0)
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)

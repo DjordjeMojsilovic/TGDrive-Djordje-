@@ -103,20 +103,27 @@
         });
     }
 
-    async function callBulkMove(paths, destinationPath) {
+    // relockIds: folder IDs unlocked solely for this bulk move — cleared from
+    // sessionStorage after success so those folders re-lock immediately.
+    async function callBulkMove(paths, destinationPath, relockIds = []) {
         const json = await postJson('/api/bulkMove', {
             sources: paths,
             destination_path: destinationPath,
         });
         if (json.status === 'locked' && typeof withFolderUnlock === 'function') {
-            withFolderUnlock(json.folder_id, '/' + json.folder_id,
-                () => callBulkMove(paths, destinationPath));
+            // Pass destinationPath (not '/' + folder_id) for correct path on nested folders.
+            withFolderUnlock(json.folder_id, destinationPath,
+                () => callBulkMove(paths, destinationPath, [...relockIds, json.folder_id]));
             return;
         }
         if (json.status !== 'ok') {
             alert('Fehler: ' + json.status);
             return;
         }
+        relockIds.forEach(id => {
+            sessionStorage.removeItem('unlocked_' + id);
+            sessionStorage.removeItem('pwhash_' + id);
+        });
         if (json.errors && json.errors.length) {
             alert(`Verschoben: ${json.moved}. Fehler: ${json.errors.length}.`);
         }

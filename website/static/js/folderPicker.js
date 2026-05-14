@@ -124,29 +124,13 @@
             return;
         }
         const destPath = _selectedPath;
-        // Find the row to check has_password
-        const row = document.querySelector(`.move-picker-row[data-path="${destPath}"]`);
-        const isLocked = row && row.getAttribute('data-has-password') === 'true';
-        const destId = row ? row.getAttribute('data-id') : null;
-
         const cb = _onPickedCallback;
         closeModal();
-
-        if (isLocked && destId && destId !== 'root') {
-            // Check if already unlocked (hash in sessionStorage)
-            const hash = (typeof getFolderUnlockHash === 'function') ? getFolderUnlockHash(destId) : null;
-            if (hash) {
-                if (cb) cb(destPath);
-            } else if (typeof showFolderPasswordModal === 'function') {
-                showFolderPasswordModal(destId, destPath, () => {
-                    if (cb) cb(destPath);
-                });
-            } else {
-                if (cb) cb(destPath);
-            }
-        } else {
-            if (cb) cb(destPath);
-        }
+        // Lock enforcement is handled by the API layer: if the destination is
+        // locked the move/bulkMove call will return {status:"locked"} and the
+        // caller (_doMove / callBulkMove) will prompt for the password and then
+        // clear the sessionStorage unlock after a successful move (re-lock).
+        if (cb) cb(destPath);
     }
 
     function init() {

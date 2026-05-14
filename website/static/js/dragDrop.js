@@ -128,7 +128,10 @@ function _setupRootDropZone() {
 
 // ── API call ──
 
-async function _doMove(sourcePath, destPath) {
+// relockIds: folder IDs that were unlocked solely for this move operation.
+// After a successful move they are removed from sessionStorage so the folder
+// re-locks and the user must re-authenticate on the next access.
+async function _doMove(sourcePath, destPath, relockIds = []) {
     try {
         const unlocks = (typeof getUnlocksMap === 'function') ? getUnlocksMap() : {};
         const res = await fetch('/api/move', {
@@ -143,9 +146,19 @@ async function _doMove(sourcePath, destPath) {
         });
         const json = await res.json();
         if (json.status === 'ok') {
+            relockIds.forEach(id => {
+                sessionStorage.removeItem('unlocked_' + id);
+                sessionStorage.removeItem('pwhash_' + id);
+            });
             window.location.reload();
         } else if (json.status === 'locked' && typeof withFolderUnlock === 'function') {
-            withFolderUnlock(json.folder_id, '/' + json.folder_id, () => _doMove(sourcePath, destPath));
+            // Pass destPath (not '/' + folder_id) so checkFolderPassword can
+            // navigate the full path, including nested locked folders.
+            withFolderUnlock(
+                json.folder_id,
+                destPath,
+                () => _doMove(sourcePath, destPath, [...relockIds, json.folder_id])
+            );
         } else {
             alert('Fehler beim Verschieben: ' + json.status);
         }
